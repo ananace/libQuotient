@@ -242,15 +242,6 @@ void Connection::doConnectToServer(const QString& user, const QString& password,
     connect(loginJob, &BaseJob::success, this, [this, loginJob] {
         d->connectWithToken(loginJob->userId(), loginJob->accessToken(),
                             loginJob->deviceId());
-
-        AccountSettings accountSettings(loginJob->userId());
-        d->encryptionManager.reset(
-            new EncryptionManager(accountSettings.encryptionAccountPickle()));
-        if (accountSettings.encryptionAccountPickle().isEmpty()) {
-            accountSettings.setEncryptionAccountPickle(
-                d->encryptionManager->olmAccountPickle());
-        }
-
         d->encryptionManager->uploadIdentityKeys(this);
         d->encryptionManager->uploadOneTimeKeys(this);
     });
@@ -310,6 +301,13 @@ void Connection::Private::connectWithToken(const QString& user,
     q->setObjectName(userId % '/' % deviceId);
     qCDebug(MAIN) << "Using server" << data->baseUrl().toDisplayString()
                   << "by user" << userId << "from device" << deviceId;
+    AccountSettings accountSettings(user);
+    encryptionManager.reset(
+        new EncryptionManager(accountSettings.encryptionAccountPickle()));
+    if (accountSettings.encryptionAccountPickle().isEmpty()) {
+        accountSettings.setEncryptionAccountPickle(
+            encryptionManager->olmAccountPickle());
+    }
     emit q->stateChanged();
     emit q->connected();
     q->reloadCapabilities();
