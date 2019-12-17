@@ -233,7 +233,9 @@ void BaseJob::Private::sendRequest()
     req.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
     req.setMaximumRedirectsAllowed(10);
     req.setAttribute(QNetworkRequest::HttpPipeliningAllowedAttribute, true);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
     req.setAttribute(QNetworkRequest::HTTP2AllowedAttribute, true);
+#endif // QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
     for (auto it = requestHeaders.cbegin(); it != requestHeaders.cend(); ++it)
         req.setRawHeader(it.key(), it.value());
 
@@ -287,7 +289,11 @@ void BaseJob::sendRequest()
                 &BaseJob::uploadProgress);
         connect(d->reply.data(), &QNetworkReply::downloadProgress, this,
                 &BaseJob::downloadProgress);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
         d->timer.start(getCurrentTimeout());
+#else
+        d->timer.start(int(getCurrentTimeout().count()));
+#endif // QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
         qCInfo(d->logCat).noquote() << "Sent" << d->dumpRequest();
         onSentRequest(d->reply.data());
         emit sentRequest();
@@ -517,7 +523,11 @@ void BaseJob::finishJob()
         ++d->retriesTaken;
         qCWarning(d->logCat).nospace() << this << ": retry #" << d->retriesTaken
                                        << " in " << retryIn.count() << " s";
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
         d->retryTimer.start(retryIn);
+#else
+        d->retryTimer.start(int(retryIn.count()));
+#endif // QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
         emit retryScheduled(d->retriesTaken, milliseconds(retryIn).count());
         return;
     }
@@ -556,8 +566,13 @@ BaseJob::duration_ms_t BaseJob::getNextRetryMs() const
 
 milliseconds BaseJob::timeToRetry() const
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
     return d->retryTimer.isActive() ? d->retryTimer.remainingTimeAsDuration()
                                     : 0s;
+#else
+    return d->retryTimer.isActive() ? milliseconds(d->retryTimer.remainingTime())
+                                    : 0s;
+#endif // QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
 }
 
 BaseJob::duration_ms_t BaseJob::millisToRetry() const

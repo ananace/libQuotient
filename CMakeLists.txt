@@ -52,7 +52,7 @@ else()
     endforeach ()
 endif()
 
-find_package(Qt5 5.9 REQUIRED Network Gui Multimedia Test)
+find_package(Qt5 5.6 REQUIRED Network Gui Multimedia Test)
 get_filename_component(Qt5_Prefix "${Qt5_DIR}/../../../.." ABSOLUTE)
 
 if ((NOT DEFINED USE_INTREE_LIBQOLM OR USE_INTREE_LIBQOLM)
@@ -85,6 +85,10 @@ if (ABS_GTAD_PATH AND ABS_API_DEF_PATH)
     endif()
     get_filename_component(ABS_CLANG_FORMAT "${CLANG_FORMAT}" PROGRAM)
 endif()
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 message( STATUS )
 message( STATUS "=============================================================================" )
