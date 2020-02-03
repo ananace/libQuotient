@@ -367,12 +367,11 @@ void Connection::sync(int timeout)
     filter.room.edit().timeline.edit().limit.emplace(100);
     filter.room.edit().state.edit().lazyLoadMembers.emplace(d->lazyLoading);
     auto job = d->syncJob =
-        callApi<SyncJob>(BackgroundRequest, d->data->lastEvent(), filter,
-                         timeout);
-    connect(job, &SyncJob::success, this, [this, job] {
+        callApi<SyncJob>(BackgroundRequest, d->data->lastEvent(), filter, 0);
+    connect(job, &SyncJob::eventReceived, this, [this, job] {
         onSyncSuccess(job->takeData());
-        d->syncJob = nullptr;
-        emit syncDone();
+        // d->syncJob = nullptr;
+        // emit syncDone();
     });
     connect(job, &SyncJob::retryScheduled, this,
             [this, job](int retriesTaken, int nextInMilliseconds) {

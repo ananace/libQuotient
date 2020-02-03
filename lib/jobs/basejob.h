@@ -278,6 +278,8 @@ signals:
      */
     void success(Quotient::BaseJob*);
 
+    void eventReceived(Quotient::BaseJob*);
+
     /**
      * Emitted together with result() if there's an error.
      * Similar to result(), this won't be emitted in case of abandon().

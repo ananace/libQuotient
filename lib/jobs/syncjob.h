@@ -37,5 +37,7 @@ protected:
 
 private:
     SyncData d;
+
+    void onSentRequest(QNetworkReply* reply) override;
 };
 } // namespace Quotient

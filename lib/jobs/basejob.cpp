@@ -136,11 +136,11 @@ BaseJob::BaseJob(HttpVerb verb, const QString& name, const QString& endpoint,
     : d(new Private(verb, endpoint, query, std::move(data), needsToken))
 {
     setObjectName(name);
-    connect(&d->timer, &QTimer::timeout, this, &BaseJob::timeout);
-    connect(&d->retryTimer, &QTimer::timeout, this, [this] {
-        setStatus(Pending);
-        sendRequest();
-    });
+    // connect(&d->timer, &QTimer::timeout, this, &BaseJob::timeout);
+    // connect(&d->retryTimer, &QTimer::timeout, this, [this] {
+    //     setStatus(Pending);
+    //     sendRequest();
+    // });
 }
 
 BaseJob::~BaseJob()

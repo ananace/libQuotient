@@ -17,6 +17,9 @@
  */
 
 #include "syncjob.h"
+#include "basejob.h"
+
+#include <QtNetwork/QNetworkReply>
 
 using namespace Quotient;
 
@@ -25,7 +28,7 @@ static size_t jobId = 0;
 SyncJob::SyncJob(const QString& since, const QString& filter, int timeout,
                  const QString& presence)
     : BaseJob(HttpVerb::Get, QStringLiteral("SyncJob-%1").arg(++jobId),
-              QStringLiteral("_matrix/client/r0/sync"))
+              QStringLiteral("_matrix/client/r0/sync/sse"), true)
 {
     setLoggingCategory(SYNCJOB);
     QUrlQuery query;
@@ -33,11 +36,10 @@ SyncJob::SyncJob(const QString& since, const QString& filter, int timeout,
         query.addQueryItem(QStringLiteral("filter"), filter);
     if (!presence.isEmpty())
         query.addQueryItem(QStringLiteral("set_presence"), presence);
-    if (timeout >= 0)
-        query.addQueryItem(QStringLiteral("timeout"), QString::number(timeout));
     if (!since.isEmpty())
-        query.addQueryItem(QStringLiteral("since"), since);
+        setRequestHeader("Last-Event-Id", since.toUtf8());
     setRequestQuery(query);
+    setExpectedContentTypes({ "text/event-stream" });
 
     setMaxRetries(std::numeric_limits<int>::max());
 }
@@ -58,4 +60,71 @@ BaseJob::Status SyncJob::parseJson(const QJsonDocument& data)
     qCCritical(MAIN).noquote() << "Incomplete sync response, missing rooms:"
                                << d.unresolvedRooms().join(',');
     return BaseJob::IncorrectResponseError;
+}
+
+
+void SyncJob::onSentRequest(QNetworkReply* reply)
+{
+    connect(reply, &QIODevice::readyRead, this, [this, reply] {
+        if (!status().good())
+            return;
+
+        qCInfo(MAIN) << "Incoming SSE data";
+
+        QString rawData;
+        do
+        {
+            const auto line = QString(reply->readLine());
+            if (line.trimmed().isEmpty())
+                break;
+            rawData.append(line);
+        } while(true);
+
+        if (rawData.length() < 100)
+            qCInfo(MAIN) << rawData;
+
+        const auto parts = rawData.split("\n", QString::SkipEmptyParts);
+
+        QString data, eventType, id;
+        for (const auto& part : parts)
+        {
+            const auto key = part.split(':')[0].trimmed();
+            const auto value = part.mid(key.length() + 1).trimmed();
+
+            if (key == "event")
+            {
+                eventType = value;
+            }
+            else if (key == "id")
+            {
+                id = value;
+            }
+            else if (key == "data")
+            {
+                if (!data.isEmpty())
+                    data.append("\n");
+                data.append(value);
+            }
+        }
+
+        if (eventType == "sync" && !data.isEmpty())
+        {
+            QJsonParseError error { 0, QJsonParseError::MissingObject };
+            const auto& json = QJsonDocument::fromJson(data.toUtf8(), &error);
+            if (error.error == QJsonParseError::NoError)
+            {
+                auto result = parseJson(json);
+                d.setNextBatch(id);
+                if (result == BaseJob::Success)
+                    emit eventReceived(this);
+                else
+                    ; // TODO: emit something
+            }
+            else
+                qCInfo(MAIN) << "Received broken SSE event" << eventType << "which parsed as" << error.errorString();
+        }
+        else
+            qCInfo(MAIN) << "Received invalid SSE event" << rawData;
+
+    });
 }

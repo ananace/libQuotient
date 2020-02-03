@@ -95,6 +95,7 @@ public:
     SyncDataList&& takeRoomData();
 
     QString nextBatch() const { return nextBatch_; }
+    void setNextBatch(const QString& nextBatch) { nextBatch_ = nextBatch; }
 
     QStringList unresolvedRooms() const { return unresolvedRoomIds; }
 
