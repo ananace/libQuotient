@@ -74,11 +74,11 @@ void SyncJob::onSentRequest(QNetworkReply* reply)
         QString rawData;
         do
         {
+            reply->waitForReadyRead(10);
+
             const auto line = QString(reply->readLine());
-            if (line.trimmed().isEmpty())
-                break;
             rawData.append(line);
-        } while(true);
+        } while(!rawData.endsWith("\n\n"));
 
         if (rawData.length() < 100)
             qCInfo(MAIN) << rawData;
